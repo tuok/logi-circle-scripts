@@ -1,0 +1,13 @@
+{
+    "media_directory": "/home/xxx/circle",
+    "logi_circle_username": "",
+    "logi_circle_password": "",
+    "logi_circle_token": "",
+    "email_server": "",
+    "email_ssl_port": 465,
+    "email_recipient": "",
+    "email_sender": "logi-circle-scripts",
+    "email_username": "",
+    "email_password": "",
+    "cameras": {}
+}
