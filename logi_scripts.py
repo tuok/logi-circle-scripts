@@ -18,7 +18,7 @@ if not args.action or args.action not in ['still', 'videos']:
     parser.error('Argument --action is incorrectly specified.')
 
 if args.config:
-    config_file_path = parser.config
+    config_file_path = args.config
 
 config = read_config(config_file_path)
 
@@ -38,7 +38,8 @@ client = CircleClient(
     config['logi_circle_username'],
     config['logi_circle_password'],
     config['logi_circle_token'],
-    config.get('cameras', {})
+    config.get('cameras', {}),
+    config.get('latest_activity', {})
 )
 
 client_error = config.get('client_error', False)
@@ -56,23 +57,34 @@ for _ in range(2):
         if not client.cameras:
             raise Exception()
 
+        latest_activities = {}
+
         for camera in client.cameras:
             if args.action == 'still':
                 client.get_still_image(camera)
             elif args.action == 'videos':
-                client.get_new_videos(camera)
+                _, latest_activity = client.get_new_videos(camera)
+                latest_activities[camera] = latest_activity
+
+        if args.action == 'videos':
+            config['latest_activity'] = latest_activities
+            write_config(config, config_file_path)
+
         break
+
     except Exception as ex:
         try:
             token = client.authorize()
             cameras = client.find_cameras()
             config['logi_circle_token'] = token
             config['cameras'] = cameras
+
         except Exception as inner_ex:
             config['client_error'] = True
             if mail_client:
                 mail_client.send_mail(config['email_recipient'], 'Logi Scripts Error', traceback.format_exc())
             break
+
         finally:
             write_config(config, config_file_path)
 

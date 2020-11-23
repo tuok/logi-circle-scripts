@@ -20,16 +20,17 @@ class CircleClient:
     AUTH_URL = '/api/accounts/authorization'
     ACCESSORIES_URL = '/api/accessories'
 
-    def __init__(self, media_root, username, password, session, cameras):
+    def __init__(self, media_root, username, password, session, cameras, latest_activity):
         self.cameras = cameras
         self.media_root = media_root
         self.username = username
         self.password = password
         self.session = session
+        self.latest_activity = latest_activity
 
         error = False
 
-        if media_root is None or len(media_root) < 1 or media_root[0] != "/":
+        if media_root is None or len(media_root) < 1 or (media_root[0] != "/" and media_root[1] != ":"):
             error = True
 
         if not error and not os.path.isdir(media_root):
@@ -100,10 +101,23 @@ class CircleClient:
         activities = self._get_activities(camera_name)
         videos = []
 
+        latest_activity = ''
+        new_latest_activity = ''
+
+        if camera_name in self.latest_activity:
+            latest_activity = self.latest_activity[camera_name]
+
         for activity in activities:
             activity_id = activity['activityId']
+
+            # Do not re-download already downloaded videos.
+            if latest_activity >= activity_id:
+                continue
+
             activity_time = parser.parse(activity_id).astimezone()
             activity_time_tokens = self._get_timestamp_tokens(activity_time)
+
+            new_latest_activity = max(new_latest_activity, activity_id)
 
             video_candidate_path = self._get_media_path(self.MediaType.Videos, camera_name, activity_time_tokens)
 
@@ -119,7 +133,10 @@ class CircleClient:
         
         print(f'Successfully downloaded {len(videos)} new videos from camera {camera_name}:')
 
-        return videos
+        if new_latest_activity == '':
+            new_latest_activity = latest_activity
+
+        return videos, new_latest_activity
 
 
     def get_still_image(self, camera_name):
